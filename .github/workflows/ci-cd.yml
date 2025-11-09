@@ -1,0 +1,61 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      DOCKER_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/node-docker-app:latest
+
+    steps:
+      # Step 1: Checkout code
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Step 2: Set up Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      # Step 3: Install dependencies
+      - name: Install dependencies
+        run: npm install
+
+      # Step 4: Run tests
+      - name: Run tests
+        run: npm test
+
+      # Step 5: Set up Docker
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+
+      # Step 6: Log in to Docker Hub
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Step 7: Build Docker image
+      - name: Build Docker image
+        run: docker build -t $DOCKER_IMAGE .
+
+      # Step 8: Push Docker image to Docker Hub
+      - name: Push Docker image
+        run: docker push $DOCKER_IMAGE
+
+      # Step 9: Deploy container (example: local Docker host)
+      - name: Deploy Docker container
+        run: |
+          docker stop node-docker-app || true
+          docker rm node-docker-app || true
+          docker run -d -p 3000:3000 --name node-docker-app $DOCKER_IMAGE
